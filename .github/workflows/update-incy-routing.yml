@@ -20,18 +20,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Refresh routing profile
+      - name: Refresh and validate routing profile
         run: python vpn/update_incy_routing.py
 
       - name: Commit changes
         shell: bash
         run: |
-          if git diff --quiet -- vpn/incy-routing-v3.json; then
+          if git diff --quiet -- vpn/incy-routing-v4.json; then
             echo "No routing updates"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add vpn/incy-routing-v3.json
-          git commit -m "chore: refresh INCY routing"
+          git add vpn/incy-routing-v4.json
+          git commit -m "chore: refresh validated INCY routing"
           git push
