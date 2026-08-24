@@ -49,7 +49,7 @@ DIRECT_DOMAINS = [
 
 
 def get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/2.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/3.0"})
     with urllib.request.urlopen(req, timeout=45) as response:
         return json.load(response)
 
@@ -98,7 +98,13 @@ def upstream_timestamp(commit, upstream_profile):
     return max(values or [int(time.time())])
 
 
-def build(upstream, last_updated):
+def versioned_geo_url(commit_sha, filename):
+    # Pin the geodata URL to the exact upstream commit. When Grimbird updates,
+    # the URL itself changes, which makes INCY re-download the geo files.
+    return f"https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@{commit_sha}/{filename}"
+
+
+def build(upstream, last_updated, commit_sha):
     return {
         "Name": PROFILE_NAME,
         "GlobalProxy": "true",
@@ -110,8 +116,8 @@ def build(upstream, last_updated):
         "DomesticDNSType": upstream.get("DomesticDNSType", "DoH"),
         "DomesticDNSDomain": upstream.get("DomesticDNSDomain", "https://common.dot.dns.yandex.net/dns-query"),
         "DomesticDNSIP": upstream.get("DomesticDNSIP", "77.88.8.8"),
-        "Geoipurl": upstream.get("Geoipurl", "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@main/geoip.dat"),
-        "Geositeurl": upstream.get("Geositeurl", "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@main/geosite.dat"),
+        "Geoipurl": versioned_geo_url(commit_sha, "geoip.dat"),
+        "Geositeurl": versioned_geo_url(commit_sha, "geosite.dat"),
         "LastUpdated": str(last_updated),
         "DnsHosts": dict(upstream.get("DnsHosts", {})),
         "RouteOrder": "block-proxy-direct",
@@ -135,7 +141,11 @@ def main():
     geosite, geoip = available_tags(tree)
     validate_tags(geosite, geoip)
 
-    profile = build(upstream, upstream_timestamp(commit, upstream))
+    commit_sha = commit.get("sha")
+    if not commit_sha:
+        raise RuntimeError("Upstream commit SHA is missing")
+
+    profile = build(upstream, upstream_timestamp(commit, upstream), commit_sha)
 
     previous = None
     if OUTPUT.exists():
@@ -150,7 +160,7 @@ def main():
         json.dump(profile, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
 
-    print("Validated and updated", OUTPUT)
+    print("Validated and updated", OUTPUT, "from", commit_sha)
 
 
 if __name__ == "__main__":
