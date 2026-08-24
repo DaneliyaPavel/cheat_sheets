@@ -49,7 +49,7 @@ DIRECT_DOMAINS = [
 
 
 def get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/3.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/4.0"})
     with urllib.request.urlopen(req, timeout=45) as response:
         return json.load(response)
 
@@ -95,16 +95,14 @@ def upstream_timestamp(commit, upstream_profile):
         values.append(int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()))
     except (KeyError, TypeError, ValueError):
         pass
-    return max(values or [int(time.time())])
+    return max(values or [0])
 
 
 def versioned_geo_url(commit_sha, filename):
-    # Pin the geodata URL to the exact upstream commit. When Grimbird updates,
-    # the URL itself changes, which makes INCY re-download the geo files.
     return f"https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@{commit_sha}/{filename}"
 
 
-def build(upstream, last_updated, commit_sha):
+def build_without_freshness(upstream, commit_sha):
     return {
         "Name": PROFILE_NAME,
         "GlobalProxy": "true",
@@ -118,7 +116,6 @@ def build(upstream, last_updated, commit_sha):
         "DomesticDNSIP": upstream.get("DomesticDNSIP", "77.88.8.8"),
         "Geoipurl": versioned_geo_url(commit_sha, "geoip.dat"),
         "Geositeurl": versioned_geo_url(commit_sha, "geosite.dat"),
-        "LastUpdated": str(last_updated),
         "DnsHosts": dict(upstream.get("DnsHosts", {})),
         "RouteOrder": "block-proxy-direct",
         "DirectSites": [f"geosite:{x}" for x in DIRECT_GEOSITES] + [f"domain:{x}" for x in DIRECT_DOMAINS],
@@ -133,7 +130,21 @@ def build(upstream, last_updated, commit_sha):
     }
 
 
+def parse_timestamp(profile):
+    if not profile:
+        return 0
+    try:
+        return int(profile.get("LastUpdated", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def main():
+    previous = None
+    if OUTPUT.exists():
+        with OUTPUT.open("r", encoding="utf-8") as fh:
+            previous = json.load(fh)
+
     upstream = get_json(UPSTREAM_PROFILE)
     tree = get_json(UPSTREAM_TREE)
     commit = get_json(UPSTREAM_COMMIT)
@@ -145,12 +156,22 @@ def main():
     if not commit_sha:
         raise RuntimeError("Upstream commit SHA is missing")
 
-    profile = build(upstream, upstream_timestamp(commit, upstream), commit_sha)
+    profile = build_without_freshness(upstream, commit_sha)
 
-    previous = None
-    if OUTPUT.exists():
-        with OUTPUT.open("r", encoding="utf-8") as fh:
-            previous = json.load(fh)
+    previous_comparable = dict(previous or {})
+    previous_comparable.pop("LastUpdated", None)
+
+    previous_ts = parse_timestamp(previous)
+    upstream_ts = upstream_timestamp(commit, upstream)
+
+    # LastUpdated must never move backwards. INCY uses it as the profile
+    # freshness marker. If any effective routing/DNS/geodata content changes,
+    # advance it to at least the current wall-clock time. If nothing changes,
+    # keep the exact existing timestamp so the workflow produces no noisy commit.
+    if previous and previous_comparable == profile:
+        profile["LastUpdated"] = str(previous_ts)
+    else:
+        profile["LastUpdated"] = str(max(int(time.time()), previous_ts + 1, upstream_ts))
 
     if previous == profile:
         print("No routing changes")
