@@ -1,0 +1,43 @@
+{
+  "Name": "PAVL — РФ напрямую",
+  "GlobalProxy": "true",
+  "LastUpdated": "1787586840",
+  "RemoteDNSType": "DoH",
+  "RemoteDNSDomain": "https://1.1.1.1/dns-query",
+  "RemoteDNSIP": "1.1.1.1",
+  "DomesticDNSType": "DoH",
+  "DomesticDNSDomain": "https://77.88.8.8/dns-query",
+  "DomesticDNSIP": "77.88.8.8",
+  "Geoipurl": "https://cdn.jsdelivr.net/gh/hydraponique/roscomvpn-geoip/release/geoip.dat",
+  "Geositeurl": "https://cdn.jsdelivr.net/gh/hydraponique/roscomvpn-geosite/release/geosite.dat",
+  "DnsHosts": {
+    "lkfl2.nalog.ru": "213.24.64.175",
+    "lknpd.nalog.ru": "213.24.64.181"
+  },
+  "DirectSites": [
+    "geosite:private",
+    "geosite:whitelist",
+    "geosite:category-ru",
+    "geosite:apple"
+  ],
+  "DirectIp": [
+    "geoip:private",
+    "geoip:direct",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "169.254.0.0/16"
+  ],
+  "ProxySites": [
+    "geosite:google-play",
+    "geosite:github",
+    "geosite:youtube",
+    "geosite:telegram"
+  ],
+  "ProxyIp": [],
+  "BlockSites": [],
+  "BlockIp": [],
+  "DomainStrategy": "IPIfNonMatch",
+  "FakeDNS": "false",
+  "useChunkFiles": true
+}
