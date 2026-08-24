@@ -11,7 +11,7 @@
   "DomesticDNSIP": "77.88.8.8",
   "Geoipurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@3135bba2cf8068f2c52a82c459227c65a793ec0f/geoip.dat",
   "Geositeurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@3135bba2cf8068f2c52a82c459227c65a793ec0f/geosite.dat",
-  "LastUpdated": "1787589780",
+  "LastUpdated": "1787590260",
   "DnsHosts": {
     "lkfl2.nalog.ru": "213.24.64.175",
     "lknpd.nalog.ru": "213.24.64.181",
@@ -30,6 +30,7 @@
   "DirectSites": [
     "geosite:private",
     "geosite:category-ru-whitelist",
+    "geosite:category-ru-all",
     "geosite:swift",
     "geosite:apple",
     "geosite:apple-dev",
@@ -46,7 +47,14 @@
     "domain:gpb.ru",
     "domain:2ip.ru",
     "domain:2ip.io",
-    "domain:api.2ip.io"
+    "domain:api.2ip.io",
+    "domain:api.ipify.org",
+    "domain:checkip.amazonaws.com",
+    "domain:ifconfig.me",
+    "domain:ip.mail.ru",
+    "domain:ipv4-internet.yandex.net",
+    "domain:ipv6-internet.yandex.net",
+    "domain:calls.okcdn.ru"
   ],
   "DirectIp": [
     "geoip:private",
