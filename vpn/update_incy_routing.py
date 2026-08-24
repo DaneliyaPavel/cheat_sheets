@@ -7,7 +7,7 @@ from pathlib import Path
 
 UPSTREAM = "https://raw.githubusercontent.com/GrimbirdUsers/ru-routing-dat/main/INCY/DEFAULT.JSON"
 OUTPUT = Path(__file__).with_name("incy-routing-v3.json")
-PROFILE_NAME = "PAVL — РФ напрямую"
+PROFILE_NAME = "🇷🇺 РФ напрямую · 🇫🇷 остальное"
 CONTROL_DOMAIN = "2ip.ru"
 
 
@@ -87,9 +87,6 @@ def build(upstream, previous=None):
     except (TypeError, ValueError):
         upstream_last_updated = 0
 
-    # Compare everything except freshness marker. If routing content changed
-    # (including 2ip DNS), force a fresh timestamp. Otherwise inherit a newer
-    # upstream timestamp only when the upstream geo/profile actually advanced.
     comparable_previous = dict(previous or {})
     comparable_previous.pop("LastUpdated", None)
     comparable_new = dict(profile)
