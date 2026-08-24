@@ -11,9 +11,14 @@ UPSTREAM_COMMIT = "https://api.github.com/repos/GrimbirdUsers/ru-routing-dat/com
 OUTPUT = Path(__file__).with_name("incy-routing-v4.json")
 PROFILE_NAME = "🇷🇺 РФ напрямую · 🇫🇷 остальное v4"
 
+# Two complementary RU meta-categories:
+# - category-ru-whitelist: official/extended whitelist + banks/payments/CDN/retail/etc.
+# - category-ru-all: broad Russian domains/services, while category-ban-ru has
+#   higher PROXY priority below and therefore still bypasses Russian blocking.
 DIRECT_GEOSITES = [
     "private",
     "category-ru-whitelist",
+    "category-ru-all",
     "swift",
     "apple",
     "apple-dev",
@@ -36,6 +41,9 @@ PROXY_GEOSITES = [
 DIRECT_GEOIPS = ["private", "ru"]
 PROXY_GEOIPS = []
 
+# Explicit direct rules are kept for critical services and common IP-check
+# endpoints used by connectivity/anti-fraud logic. They complement geosite/geoip
+# matching and make failures easier to diagnose.
 DIRECT_DOMAINS = [
     "gosuslugi.ru",
     "esia.gosuslugi.ru",
@@ -45,11 +53,18 @@ DIRECT_DOMAINS = [
     "2ip.ru",
     "2ip.io",
     "api.2ip.io",
+    "api.ipify.org",
+    "checkip.amazonaws.com",
+    "ifconfig.me",
+    "ip.mail.ru",
+    "ipv4-internet.yandex.net",
+    "ipv6-internet.yandex.net",
+    "calls.okcdn.ru",
 ]
 
 
 def get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/4.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/5.0"})
     with urllib.request.urlopen(req, timeout=45) as response:
         return json.load(response)
 
