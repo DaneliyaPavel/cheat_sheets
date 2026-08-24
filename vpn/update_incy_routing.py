@@ -1,55 +1,105 @@
 #!/usr/bin/env python3
 import json
-import socket
 import time
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
-UPSTREAM = "https://raw.githubusercontent.com/GrimbirdUsers/ru-routing-dat/main/INCY/DEFAULT.JSON"
-OUTPUT = Path(__file__).with_name("incy-routing-v3.json")
-PROFILE_NAME = "🇷🇺 РФ напрямую · 🇫🇷 остальное"
-CONTROL_DOMAIN = "2ip.ru"
+UPSTREAM_PROFILE = "https://raw.githubusercontent.com/GrimbirdUsers/ru-routing-dat/main/INCY/DEFAULT.JSON"
+UPSTREAM_TREE = "https://api.github.com/repos/GrimbirdUsers/ru-routing-dat/git/trees/main?recursive=1"
+UPSTREAM_COMMIT = "https://api.github.com/repos/GrimbirdUsers/ru-routing-dat/commits/main"
+OUTPUT = Path(__file__).with_name("incy-routing-v4.json")
+PROFILE_NAME = "🇷🇺 РФ напрямую · 🇫🇷 остальное v4"
+
+DIRECT_GEOSITES = [
+    "private",
+    "category-ru-whitelist",
+    "swift",
+    "apple",
+    "apple-dev",
+    "apple-pki",
+    "apple-update",
+    "icloud",
+    "icloudprivaterelay",
+    "itunes",
+    "beats",
+]
+
+PROXY_GEOSITES = [
+    "category-ban-ru",
+    "youtube",
+    "google",
+    "google-play",
+    "telegram",
+]
+
+DIRECT_GEOIPS = ["private", "ru"]
+PROXY_GEOIPS = []
+
+DIRECT_DOMAINS = [
+    "gosuslugi.ru",
+    "esia.gosuslugi.ru",
+    "gu-st.ru",
+    "gazprombank.ru",
+    "gpb.ru",
+    "2ip.ru",
+    "2ip.io",
+    "api.2ip.io",
+]
 
 
-def load_upstream():
-    req = urllib.request.Request(UPSTREAM, headers={"User-Agent": "PAVL-INCY-Routing-Updater/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as response:
+def get_json(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "PAVL-INCY-Routing-Updater/2.0"})
+    with urllib.request.urlopen(req, timeout=45) as response:
         return json.load(response)
 
 
-def resolve_ipv4(domain):
-    result = []
-    for info in socket.getaddrinfo(domain, 443, socket.AF_INET, socket.SOCK_STREAM):
-        ip = info[4][0]
-        if ip not in result:
-            result.append(ip)
-    return result
+def available_tags(tree):
+    geosite = set()
+    geoip = set()
+    for entry in tree.get("tree", []):
+        path = entry.get("path", "")
+        if entry.get("type") != "blob":
+            continue
+        if path.startswith("data-geosite/"):
+            name = path[len("data-geosite/"):]
+            if "/" not in name:
+                geosite.add(name)
+        elif path.startswith("data-geoip/") and path.endswith(".txt"):
+            name = path[len("data-geoip/"):-4]
+            if "/" not in name:
+                geoip.add(name)
+    return geosite, geoip
 
 
-def unique(items):
-    out = []
-    for item in items:
-        if item not in out:
-            out.append(item)
-    return out
+def validate_tags(geosite, geoip):
+    missing_geosite = sorted(set(DIRECT_GEOSITES + PROXY_GEOSITES) - geosite)
+    missing_geoip = sorted(set(DIRECT_GEOIPS + PROXY_GEOIPS) - geoip)
+    if missing_geosite or missing_geoip:
+        parts = []
+        if missing_geosite:
+            parts.append("missing geosite tags: " + ", ".join(missing_geosite))
+        if missing_geoip:
+            parts.append("missing geoip tags: " + ", ".join(missing_geoip))
+        raise RuntimeError("Routing validation failed: " + "; ".join(parts))
 
 
-def build(upstream, previous=None):
-    control_ips = resolve_ipv4(CONTROL_DOMAIN)
+def upstream_timestamp(commit, upstream_profile):
+    values = []
+    try:
+        values.append(int(upstream_profile.get("LastUpdated", 0)))
+    except (TypeError, ValueError):
+        pass
+    try:
+        iso = commit["commit"]["committer"]["date"]
+        values.append(int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()))
+    except (KeyError, TypeError, ValueError):
+        pass
+    return max(values or [int(time.time())])
 
-    direct_sites = [x for x in upstream.get("DirectSites", []) if x != "geosite:category-ban-ru"]
-    direct_sites.append(f"domain:{CONTROL_DOMAIN}")
 
-    proxy_sites = list(upstream.get("ProxySites", []))
-    proxy_sites.append("geosite:category-ban-ru")
-
-    direct_ip = list(upstream.get("DirectIp", [])) + control_ips
-
-    dns_hosts = dict(upstream.get("DnsHosts", {}))
-    if control_ips:
-        dns_hosts[CONTROL_DOMAIN] = control_ips[0]
-
-    profile = {
+def build(upstream, last_updated):
+    return {
         "Name": PROFILE_NAME,
         "GlobalProxy": "true",
         "RemoteDns": upstream.get("RemoteDns", "8.8.8.8"),
@@ -60,14 +110,15 @@ def build(upstream, previous=None):
         "DomesticDNSType": upstream.get("DomesticDNSType", "DoH"),
         "DomesticDNSDomain": upstream.get("DomesticDNSDomain", "https://common.dot.dns.yandex.net/dns-query"),
         "DomesticDNSIP": upstream.get("DomesticDNSIP", "77.88.8.8"),
-        "Geoipurl": upstream["Geoipurl"],
-        "Geositeurl": upstream["Geositeurl"],
-        "DnsHosts": dns_hosts,
+        "Geoipurl": upstream.get("Geoipurl", "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@main/geoip.dat"),
+        "Geositeurl": upstream.get("Geositeurl", "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@main/geosite.dat"),
+        "LastUpdated": str(last_updated),
+        "DnsHosts": dict(upstream.get("DnsHosts", {})),
         "RouteOrder": "block-proxy-direct",
-        "DirectSites": unique(direct_sites),
-        "DirectIp": unique(direct_ip),
-        "ProxySites": unique(proxy_sites),
-        "ProxyIp": list(upstream.get("ProxyIp", [])),
+        "DirectSites": [f"geosite:{x}" for x in DIRECT_GEOSITES] + [f"domain:{x}" for x in DIRECT_DOMAINS],
+        "DirectIp": [f"geoip:{x}" for x in DIRECT_GEOIPS],
+        "ProxySites": [f"geosite:{x}" for x in PROXY_GEOSITES],
+        "ProxyIp": [f"geoip:{x}" for x in PROXY_GEOIPS],
         "BlockSites": [],
         "BlockIp": [],
         "DomainStrategy": "IPIfNonMatch",
@@ -75,39 +126,21 @@ def build(upstream, previous=None):
         "useChunkFiles": False,
     }
 
-    previous_last_updated = 0
-    if previous:
-        try:
-            previous_last_updated = int(previous.get("LastUpdated", 0))
-        except (TypeError, ValueError):
-            pass
-
-    try:
-        upstream_last_updated = int(upstream.get("LastUpdated", 0))
-    except (TypeError, ValueError):
-        upstream_last_updated = 0
-
-    comparable_previous = dict(previous or {})
-    comparable_previous.pop("LastUpdated", None)
-    comparable_new = dict(profile)
-
-    if comparable_previous != comparable_new:
-        last_updated = int(time.time())
-    else:
-        last_updated = max(previous_last_updated, upstream_last_updated)
-
-    profile["LastUpdated"] = str(last_updated)
-    return profile
-
 
 def main():
+    upstream = get_json(UPSTREAM_PROFILE)
+    tree = get_json(UPSTREAM_TREE)
+    commit = get_json(UPSTREAM_COMMIT)
+
+    geosite, geoip = available_tags(tree)
+    validate_tags(geosite, geoip)
+
+    profile = build(upstream, upstream_timestamp(commit, upstream))
+
     previous = None
     if OUTPUT.exists():
         with OUTPUT.open("r", encoding="utf-8") as fh:
             previous = json.load(fh)
-
-    upstream = load_upstream()
-    profile = build(upstream, previous)
 
     if previous == profile:
         print("No routing changes")
@@ -116,7 +149,8 @@ def main():
     with OUTPUT.open("w", encoding="utf-8") as fh:
         json.dump(profile, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
-    print("Updated", OUTPUT)
+
+    print("Validated and updated", OUTPUT)
 
 
 if __name__ == "__main__":
