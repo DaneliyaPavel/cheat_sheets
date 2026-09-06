@@ -9,8 +9,8 @@
   "DomesticDNSType": "DoH",
   "DomesticDNSDomain": "https://common.dot.dns.yandex.net/dns-query",
   "DomesticDNSIP": "77.88.8.8",
-  "Geoipurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@60f6c971b6a1e4ebfc9b06d8d2400178510ea303/geoip.dat",
-  "Geositeurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@60f6c971b6a1e4ebfc9b06d8d2400178510ea303/geosite.dat",
+  "Geoipurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@553a21831ea168f98c2c48d906bbf2d7b5d3eaa7/geoip.dat",
+  "Geositeurl": "https://cdn.jsdelivr.net/gh/GrimbirdUsers/ru-routing-dat@553a21831ea168f98c2c48d906bbf2d7b5d3eaa7/geosite.dat",
   "DnsHosts": {
     "lkfl2.nalog.ru": "213.24.64.175",
     "lknpd.nalog.ru": "213.24.64.181",
@@ -72,5 +72,5 @@
   "DomainStrategy": "IPIfNonMatch",
   "FakeDNS": "false",
   "useChunkFiles": false,
-  "LastUpdated": "1788078476"
+  "LastUpdated": "1788678877"
 }
